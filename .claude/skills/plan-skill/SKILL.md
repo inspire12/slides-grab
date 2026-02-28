@@ -1,145 +1,145 @@
 ---
 name: plan-skill
-description: 프레젠테이션 아웃라인을 계획하고 사용자 승인을 받는 감독자 스킬. PPT 구조 설계, 슬라이드 구성, 아웃라인 작성이 필요할 때 사용.
+description: Supervisor skill that plans presentation outlines and manages user approval loops. Use when designing PPT structure, slide composition, or writing outlines.
 ---
 
-# Plan Skill - 프레젠테이션 아웃라인 계획 스킬
+# Plan Skill - Presentation Outline Planning
 
-사용자 주제를 받아 `slide-outline.md` 아웃라인을 생성하고, 사용자 승인을 받을 때까지 수정 루프를 관리하는 **감독자 스킬**입니다.
+A **supervisor skill** that takes a user topic, generates a `slide-outline.md` outline, and manages a revision loop until the user approves.
 
-직접 아웃라인을 작성하지 않고, `organizer-agent`에게 실무를 위임합니다.
-
----
-
-## 역할 분담
-
-| 역할 | 담당 | 책임 |
-|------|------|------|
-| **감독자** | plan-skill (당신) | 사용자 소통, 품질관리, 수정 루프 관리 |
-| **실무자** | organizer-agent | `slide-outline.md` 초안 작성 및 수정 |
+Does not write the outline directly — delegates the work to `organizer-agent`.
 
 ---
 
-## 입력
+## Role Assignment
 
-- 사용자 주제 (필수)
-- 리서치 결과 (선택 - research-agent 출력물)
-- 참고 자료, 톤/분위기 요청 등
-
-## 출력
-
-- 사용자가 승인한 `slide-outline.md`
+| Role | Owner | Responsibility |
+|------|-------|----------------|
+| **Supervisor** | plan-skill (you) | User communication, quality control, revision loop management |
+| **Worker** | organizer-agent | Draft and revise `slide-outline.md` |
 
 ---
 
-## 워크플로우
+## Input
 
-### 1. organizer-agent에게 초안 생성 위임
+- User topic (required)
+- Research results (optional — research-agent output)
+- Reference materials, tone/mood requests, etc.
 
-Task tool로 `organizer-agent`를 호출하여 `slide-outline.md` 초안을 생성합니다.
+## Output
 
-**프롬프트에 포함할 내용:**
-- 사용자 주제 및 요구사항
-- (있다면) 리서치 결과
-- 톤/분위기 요청
-- `slide-outline.md`의 기대 형식 (아래 형식 참조)
-
-### 2. 사용자에게 아웃라인 제시
-
-생성된 `slide-outline.md`를 읽어서 사용자에게 다음을 제시합니다:
-
-- 전체 슬라이드 수
-- 슬라이드 순서와 각 슬라이드의 역할
-- 핵심 메시지 요약
-- 디자인 톤/분위기
-
-### 3. 피드백 반영 루프
-
-사용자 피드백이 있으면:
-1. 피드백 내용을 정리
-2. 기존 `slide-outline.md`와 함께 `organizer-agent`를 다시 호출
-3. 수정된 아웃라인을 사용자에게 다시 제시
-4. 사용자가 승인할 때까지 반복
-
-### 4. 승인 확인
-
-사용자가 명시적으로 승인하면 아웃라인 단계를 완료합니다.
+- User-approved `slide-outline.md`
 
 ---
 
-## 절대 규칙
+## Workflow
 
-1. **승인 없이 다음 단계로 넘어가지 않음** - 사용자가 명시적으로 "좋아요", "승인", "OK", "진행해" 등의 승인 의사를 밝힐 때까지 아웃라인 수정 루프를 유지합니다.
-2. **직접 아웃라인을 작성하지 않음** - 반드시 `organizer-agent`를 통해 작성합니다.
-3. **HTML 생성을 시작하지 않음** - 이 스킬의 범위는 `slide-outline.md` 승인까지입니다. HTML 생성은 `design-skill`의 역할입니다.
+### 1. Delegate Draft Creation to organizer-agent
+
+Use the Task tool to call `organizer-agent` and generate a `slide-outline.md` draft.
+
+**Include in the prompt:**
+- User topic and requirements
+- Research results (if available)
+- Tone/mood requests
+- Expected format for `slide-outline.md` (see format below)
+
+### 2. Present Outline to User
+
+Read the generated `slide-outline.md` and present to the user:
+
+- Total number of slides
+- Slide order and each slide's role
+- Key message summary
+- Design tone/mood
+
+### 3. Feedback Revision Loop
+
+When user provides feedback:
+1. Organize the feedback
+2. Call `organizer-agent` again with the existing `slide-outline.md` and feedback
+3. Present the revised outline to the user
+4. Repeat until user approves
+
+### 4. Approval Confirmation
+
+Complete the outline stage when the user explicitly approves.
 
 ---
 
-## slide-outline.md 기대 형식
+## Absolute Rules
+
+1. **Never proceed to the next stage without approval** — Maintain the revision loop until the user explicitly signals approval ("looks good", "approved", "OK", "proceed", etc.).
+2. **Never write the outline directly** — Always delegate to `organizer-agent`.
+3. **Never start HTML generation** — This skill's scope ends at `slide-outline.md` approval. HTML generation is the responsibility of `design-skill`.
+
+---
+
+## Expected slide-outline.md Format
 
 ```markdown
-# [프레젠테이션 제목]
+# [Presentation Title]
 
-## 메타 정보
-- **주제**: ...
-- **대상 청중**: ...
-- **톤/분위기**: ...
-- **슬라이드 수**: N장
-- **비율**: 16:9
+## Meta
+- **Topic**: ...
+- **Target Audience**: ...
+- **Tone/Mood**: ...
+- **Slide Count**: N slides
+- **Aspect Ratio**: 16:9
 
-## 슬라이드 구성
+## Slide Composition
 
-### Slide 1 - 표지
-- **타입**: Cover
-- **제목**: ...
-- **부제**: ...
+### Slide 1 - Cover
+- **Type**: Cover
+- **Title**: ...
+- **Subtitle**: ...
 
-### Slide 2 - 목차
-- **타입**: Contents
-- **항목**: ...
+### Slide 2 - Table of Contents
+- **Type**: Contents
+- **Items**: ...
 
-### Slide 3 - [제목]
-- **타입**: Section Divider / Content / Statistics / Quote / Timeline / ...
-- **핵심 메시지**: ...
-- **세부 내용**:
+### Slide 3 - [Title]
+- **Type**: Section Divider / Content / Statistics / Quote / Timeline / ...
+- **Key Message**: ...
+- **Details**:
   - ...
   - ...
 
 ...
 
-### Slide N - 마무리
-- **타입**: Closing
-- **메시지**: ...
+### Slide N - Closing
+- **Type**: Closing
+- **Message**: ...
 ```
 
 ---
 
-## organizer-agent 호출 예시
+## organizer-agent Call Examples
 
 ```
-Task tool 호출:
+Task tool call:
 - subagent_type: "organizer-agent"
 - prompt: |
-    다음 주제로 프레젠테이션 아웃라인을 작성해주세요.
+    Create a presentation outline for the following topic.
 
-    주제: [사용자 주제]
-    요구사항: [사용자 요구사항]
-    리서치 결과: [있다면]
+    Topic: [user topic]
+    Requirements: [user requirements]
+    Research results: [if available]
 
-    slide-outline.md 파일로 저장해주세요.
-    [기대 형식 포함]
+    Save as slide-outline.md.
+    [include expected format]
 ```
 
-피드백 반영 시:
+For feedback revisions:
 
 ```
-Task tool 호출:
+Task tool call:
 - subagent_type: "organizer-agent"
 - prompt: |
-    기존 아웃라인을 수정해주세요.
+    Revise the existing outline.
 
-    현재 아웃라인: [slide-outline.md 내용]
-    사용자 피드백: [피드백 내용]
+    Current outline: [slide-outline.md content]
+    User feedback: [feedback content]
 
-    수정된 slide-outline.md를 저장해주세요.
+    Save the revised slide-outline.md.
 ```
