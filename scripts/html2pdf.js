@@ -117,6 +117,10 @@ function normalizeDimension(value, fallback) {
   return Math.max(1, Math.round(value));
 }
 
+function isMeaningfulDimension(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
 export function buildPdfOptions(widthPx, heightPx) {
   return {
     width: `${normalizeDimension(widthPx, FALLBACK_SLIDE_SIZE.width)}px`,
@@ -146,7 +150,71 @@ async function getSlideSize(page) {
   };
 }
 
-async function renderSlideToPdf(page, slideFile, slidesDir) {
+export async function normalizePageForPdf(page) {
+  const size = await page.evaluate((fallbackSize) => {
+    const body = document.body;
+    const html = document.documentElement;
+    const bodyStyle = window.getComputedStyle(body);
+    const htmlStyle = window.getComputedStyle(html);
+    const bodyRect = body.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || html.clientWidth || 0;
+    const viewportHeight = window.innerHeight || html.clientHeight || 0;
+
+    const parsePx = (value) => Number.parseFloat(value) || 0;
+    const bodyWidth = parsePx(bodyStyle.width) || bodyRect.width || 0;
+    const bodyHeight = parsePx(bodyStyle.height) || bodyRect.height || 0;
+
+    const elementChildren = Array.from(body.children).filter((node) => node instanceof HTMLElement);
+    const wrapperCandidate = elementChildren.length === 1 ? elementChildren[0] : null;
+    const wrapperRect = wrapperCandidate?.getBoundingClientRect();
+    const wrapperWidth = wrapperRect?.width || 0;
+    const wrapperHeight = wrapperRect?.height || 0;
+    const wrapperAspectRatio = wrapperWidth > 0 && wrapperHeight > 0 ? wrapperWidth / wrapperHeight : 0;
+    const bodyLooksLikeViewport =
+      Math.abs(bodyWidth - viewportWidth) <= 2 || Math.abs(bodyHeight - viewportHeight) <= 2;
+    const bodyExceedsWrapper =
+      bodyWidth - wrapperWidth > 2 || bodyHeight - wrapperHeight > 2;
+    const wrapperLooksLikeSlide =
+      Math.abs(wrapperAspectRatio - 16 / 9) <= 0.05 &&
+      wrapperWidth > 0 &&
+      wrapperHeight > 0 &&
+      wrapperWidth <= bodyWidth &&
+      wrapperHeight <= bodyHeight;
+
+    const useWrapperFrame = wrapperLooksLikeSlide && (bodyLooksLikeViewport || bodyExceedsWrapper);
+    const normalizedWidth = Math.max(
+      1,
+      Math.round((useWrapperFrame ? wrapperWidth : bodyWidth) || fallbackSize.width),
+    );
+    const normalizedHeight = Math.max(
+      1,
+      Math.round((useWrapperFrame ? wrapperHeight : bodyHeight) || fallbackSize.height),
+    );
+
+    html.style.margin = '0';
+    html.style.padding = '0';
+    html.style.overflow = 'hidden';
+    if (htmlStyle.width === 'auto' || !parsePx(htmlStyle.width)) {
+      html.style.width = `${normalizedWidth}px`;
+    }
+    if (htmlStyle.height === 'auto' || !parsePx(htmlStyle.height)) {
+      html.style.height = `${normalizedHeight}px`;
+    }
+
+    body.style.margin = '0';
+    body.style.padding = '0';
+    body.style.overflow = 'hidden';
+    body.style.width = `${normalizedWidth}px`;
+    body.style.height = `${normalizedHeight}px`;
+
+    return { width: normalizedWidth, height: normalizedHeight };
+  }, FALLBACK_SLIDE_SIZE);
+
+  await page.setViewportSize(size);
+  return size;
+}
+
+export async function renderSlideToPdf(page, slideFile, slidesDir) {
   const slidePath = join(slidesDir, slideFile);
   const slideUrl = pathToFileURL(slidePath).href;
 
@@ -157,7 +225,12 @@ async function renderSlideToPdf(page, slideFile, slidesDir) {
     }
   });
 
+  const normalizedSize = await normalizePageForPdf(page);
   const size = await getSlideSize(page);
+  if (!isMeaningfulDimension(size.width) || !isMeaningfulDimension(size.height)) {
+    size.width = normalizedSize.width;
+    size.height = normalizedSize.height;
+  }
   return page.pdf(buildPdfOptions(size.width, size.height));
 }
 
