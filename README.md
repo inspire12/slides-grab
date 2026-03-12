@@ -76,6 +76,17 @@ slides-grab list-templates    # Show available slide templates
 slides-grab list-themes       # Show available color themes
 ```
 
+## Image Contract
+
+Slides should store local image files in `<slides-dir>/assets/` and reference them as `./assets/<file>` from each `slide-XX.html`.
+
+- Preferred: `<img src="./assets/example.png" alt="...">`
+- Allowed: `data:` URLs for fully self-contained slides
+- Allowed with warnings: remote `https://` images
+- Unsupported: absolute filesystem paths such as `/Users/...` or `C:\\...`
+
+Run `slides-grab validate --slides-dir <path>` before export to catch missing local assets and discouraged path forms.
+
 `slides-grab pdf` now defaults to `--mode capture`, which rasterizes each rendered slide into the PDF for better visual fidelity. Use `--mode print` when searchable/selectable browser text matters more than pixel-perfect parity.
 
 ### Multi-Deck Workflow
