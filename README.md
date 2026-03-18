@@ -72,6 +72,7 @@ slides-grab convert           # Export to experimental / unstable PPTX
 slides-grab figma             # Export an experimental / unstable Figma Slides importable PPTX
 slides-grab pdf               # Export PDF in capture mode (default)
 slides-grab pdf --mode print  # Export searchable/selectable text PDF
+slides-grab tldraw           # Render a .tldr diagram into a slide-sized local SVG asset
 slides-grab list-templates    # Show available slide templates
 slides-grab list-themes       # Show available color themes
 ```
@@ -103,6 +104,27 @@ slides-grab figma      --slides-dir decks/my-deck --output decks/my-deck-figma.p
 ```
 
 > **Warning:** `slides-grab convert` and `slides-grab figma` are currently **experimental / unstable**. Expect best-effort output, layout shifts, and manual cleanup in PowerPoint or Figma.
+
+### Tldraw Diagram Assets
+
+Use `slides-grab tldraw` when you want a `tldraw` diagram to fit an exact slide region and remain export-friendly as a local SVG asset:
+
+```bash
+slides-grab tldraw \
+  --input decks/my-deck/assets/system.tldr \
+  --output decks/my-deck/assets/system.svg \
+  --width 640 \
+  --height 320 \
+  --padding 16
+```
+
+Then reference the generated SVG from your slide HTML with a normal local image:
+
+```html
+<img src="./assets/system.svg" alt="System architecture diagram">
+```
+
+The built-in `diagram-tldraw` template is a simple starting point for this workflow.
 
 ### Figma Workflow
 
