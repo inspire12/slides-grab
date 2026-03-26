@@ -82,6 +82,12 @@ test('buildCodexEditPrompt includes user prompt, bbox, and XPath targets', () =>
   assert.match(prompt, /skills\/slides-grab-design\/SKILL\.md/);
   assert.match(prompt, /Keep slide size 720pt x 405pt\./);
   assert.match(prompt, /Detailed design\/export guardrails \(selected from the full design system\):/);
+  assert.match(prompt, /Slide art direction defaults \(packaged guidance for beautiful HTML slides\):/);
+  assert.match(prompt, /visual thesis/i);
+  assert.match(prompt, /content plan/i);
+  assert.match(prompt, /Treat the opening slide like a poster/i);
+  assert.match(prompt, /one dominant visual anchor/i);
+  assert.match(prompt, /Would this still feel premium without shadows, cards, or extra chrome\?/i);
   assert.match(prompt, /Do not use non-body `background-image` for content imagery; use `<img>` instead\./);
   assert.match(prompt, /CSS gradients.*not supported in PowerPoint conversion/i);
   assert.match(prompt, /Never forget to build the viewer/i);
@@ -136,6 +142,11 @@ test('getDetailedDesignSkillPrompt loads only relevant detailed design sections'
   assert.match(detailedPrompt, /## Text Usage Rules/);
   assert.match(detailedPrompt, /## Workflow \(Stage 2: Design \+ Human Review\)/);
   assert.match(detailedPrompt, /## Important Notes/);
+  assert.match(detailedPrompt, /## Beautiful Defaults for Slides/);
+  assert.match(detailedPrompt, /visual thesis/i);
+  assert.match(detailedPrompt, /content plan/i);
+  assert.match(detailedPrompt, /Treat the opening slide like a poster/i);
+  assert.match(detailedPrompt, /Would this still feel premium without shadows, cards, or extra chrome\?/i);
   assert.doesNotMatch(detailedPrompt, /## Core Design Philosophy/);
   assert.doesNotMatch(detailedPrompt, /### 1\. Chart\.js/);
 });
