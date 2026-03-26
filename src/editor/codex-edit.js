@@ -29,12 +29,10 @@ const BEAUTIFUL_SLIDE_DEFAULTS_SECTION_HEADINGS = [
 const EDITOR_PPT_DESIGN_DUPLICATE_PATTERNS = [
   /visual thesis/i,
   /content plan/i,
-  /slide litmus check/i,
   /dominant visual anchor/i,
   /cardless layouts/i,
   /whitespace, alignment, scale, cropping, and contrast/i,
   /opening slides and section dividers like posters/i,
-  /references\/beautiful-slide-defaults\.md/i,
 ];
 const EDITOR_PPT_DESIGN_SKILL_FALLBACK = [
   '## Workflow',
@@ -42,8 +40,9 @@ const EDITOR_PPT_DESIGN_SKILL_FALLBACK = [
   '2. Run `slides-grab validate --slides-dir <path>` after generation or edits.',
   '3. If validation fails, automatically fix the source slide HTML/CSS and re-run validation until it passes.',
   '4. Run `slides-grab build-viewer --slides-dir <path>` only after validation passes.',
-  '5. Iterate on user feedback by editing only requested slide files, then re-run validation and rebuild the viewer.',
-  '6. Keep revising until user approves conversion stage.',
+  '5. Run the slide litmus check from `references/beautiful-slide-defaults.md` before presenting the deck for review.',
+  '6. Iterate on user feedback by editing only requested slide files, then re-run validation and rebuild the viewer.',
+  '7. Keep revising until user approves conversion stage.',
   '',
   '## Rules',
   '- Keep slide size 720pt x 405pt.',

@@ -103,8 +103,10 @@ test('buildCodexEditPrompt keeps art-direction defaults without duplicating them
 
   assert.equal((prompt.match(/visual thesis/gi) || []).length, 1);
   assert.equal((prompt.match(/content plan/gi) || []).length, 1);
+  assert.equal((prompt.match(/slide litmus check/gi) || []).length, 1);
   assert.equal((prompt.match(/cardless layouts/gi) || []).length, 1);
   assert.equal((prompt.match(/whitespace, alignment, scale, cropping, and contrast/gi) || []).length, 1);
+  assert.equal((prompt.match(/## Review Litmus/g) || []).length, 1);
   assert.match(prompt, /Slide art direction defaults \(packaged guidance for beautiful HTML slides\):/);
 });
 
