@@ -240,6 +240,19 @@ function ensureInsideDirectory(filePath, directoryPath) {
   return relativePath !== '' && !relativePath.startsWith('..') && !isAbsolute(relativePath);
 }
 
+function resolveRequestedOutputPath(output, assetsDir) {
+  const trimmed = output.trim();
+  if (isAbsolute(trimmed)) {
+    return resolve(trimmed);
+  }
+
+  const normalized = trimmed
+    .replace(/^[.][\\/]/, '')
+    .replace(/^assets[\\/]/, '');
+
+  return resolve(assetsDir, normalized);
+}
+
 export function resolveNanoBananaOutputPath({
   slidesDir,
   prompt,
@@ -253,8 +266,8 @@ export function resolveNanoBananaOutputPath({
 
   let outputPath;
   if (output) {
-    const requestedPath = resolve(output);
-    if (!ensureInsideDirectory(requestedPath, assetsDir) && requestedPath !== assetsDir) {
+    const requestedPath = resolveRequestedOutputPath(output, assetsDir);
+    if (!ensureInsideDirectory(requestedPath, assetsDir)) {
       throw new Error(`Generated images must be saved inside ${assetsDir}.`);
     }
     outputPath = extname(requestedPath) ? requestedPath : `${requestedPath}${extension}`;
@@ -316,21 +329,21 @@ export async function generateNanoBananaImage({
     throw new Error('Global fetch is unavailable in this runtime.');
   }
 
-  const response = await fetchImpl(buildNanoBananaEndpoint(model), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: JSON.stringify(buildNanoBananaApiRequest({ prompt, aspectRatio, imageSize })),
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(getNanoBananaFallbackMessage(`Nano Banana API request failed: ${getApiErrorMessage(payload, response.status)}.`));
-  }
-
   try {
+    const response = await fetchImpl(buildNanoBananaEndpoint(model), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(buildNanoBananaApiRequest({ prompt, aspectRatio, imageSize })),
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(`Nano Banana API request failed: ${getApiErrorMessage(payload, response.status)}.`);
+    }
+
     return extractGeneratedImage(payload);
   } catch (error) {
     throw new Error(getNanoBananaFallbackMessage(error.message));

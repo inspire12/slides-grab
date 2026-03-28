@@ -101,6 +101,19 @@ test('resolveNanoBananaOutputPath keeps generated assets under the deck assets d
   );
 });
 
+test('resolveNanoBananaOutputPath treats relative --output values as assets-relative paths', () => {
+  const slidesDir = path.resolve('decks/demo');
+  const target = resolveNanoBananaOutputPath({
+    slidesDir,
+    prompt: 'test',
+    output: 'hero-image',
+    mimeType: 'image/png',
+  });
+
+  assert.equal(target.outputPath, path.join(slidesDir, 'assets', 'hero-image.png'));
+  assert.equal(target.relativeRef, './assets/hero-image.png');
+});
+
 test('buildNanoBananaApiRequest matches the documented Gemini image request shape', () => {
   assert.deepEqual(
     buildNanoBananaApiRequest({
@@ -228,6 +241,21 @@ test('main throws an actionable fallback error when no API key is configured', a
     () => main(['--prompt', 'A floating product render'], { env: {}, fetchImpl: async () => {
       throw new Error('fetch should not be called');
     } }),
+    /web search/i,
+  );
+});
+
+test('main wraps network failures in the actionable fallback guidance', async () => {
+  await assert.rejects(
+    () => main(
+      ['--prompt', 'A floating product render'],
+      {
+        env: { GOOGLE_API_KEY: 'test-key' },
+        fetchImpl: async () => {
+          throw new Error('network down');
+        },
+      },
+    ),
     /web search/i,
   );
 });
