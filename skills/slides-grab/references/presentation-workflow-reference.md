@@ -8,10 +8,10 @@ Guides you through the complete presentation pipeline from topic to exported fil
 
 ### Stage 1 — Plan
 
-Use **plan-skill** (`.claude/skills/plan-skill/SKILL.md`).
+Use the installed **slides-grab-plan** skill.
 
 1. Take user's topic, audience, and tone.
-2. Delegate outline creation to `organizer-agent`.
+2. Create `slide-outline.md`.
 3. Present `slide-outline.md` to user.
 4. Revise until user explicitly approves.
 
@@ -19,13 +19,13 @@ Use **plan-skill** (`.claude/skills/plan-skill/SKILL.md`).
 
 ### Stage 2 — Design
 
-Use **design-skill** (`.claude/skills/design-skill/SKILL.md`).
+Use the installed **slides-grab-design** skill.
 
 1. Read approved `slide-outline.md`.
 2. Generate `slide-*.html` files in the slides workspace (default: `slides/`).
 3. Run validation: `slides-grab validate --slides-dir <path>`
 4. If validation fails, automatically fix the slide HTML/CSS until validation passes.
-5. Build the viewer: `node scripts/build-viewer.js --slides-dir <path>`
+5. Build the viewer: `slides-grab build-viewer --slides-dir <path>`
 6. When a slide calls for bespoke imagery, prefer `slides-grab image --prompt "<prompt>" --slides-dir <path>` so Nano Banana Pro saves a local asset under `<slides-dir>/assets/`.
 7. For complex diagrams (architecture, workflows, relationship maps, multi-node concepts), prefer `tldraw`. Render a local diagram asset with `slides-grab tldraw`, store it under `<slides-dir>/assets/`, and place it into the slide with a normal `<img>`.
 8. If `GOOGLE_API_KEY` or `GEMINI_API_KEY` is unavailable, ask the user for a Google API key or fall back to web search + download into `<slides-dir>/assets/`.
@@ -37,7 +37,7 @@ Use **design-skill** (`.claude/skills/design-skill/SKILL.md`).
 
 ### Stage 3 — Export
 
-Use **pptx-skill** (`.claude/skills/pptx-skill/SKILL.md`).
+Use the installed **slides-grab-export** skill.
 
 1. Confirm user wants conversion.
 2. Export to PPTX: `slides-grab convert --slides-dir <path> --output <name>.pptx` (**experimental / unstable**)

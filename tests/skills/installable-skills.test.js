@@ -111,3 +111,18 @@ test('slides-grab design skill points at the bundled art-direction reference', (
   assert.match(text, /Nano Banana Pro/i);
   assert.match(text, /GOOGLE_API_KEY|GEMINI_API_KEY/);
 });
+
+test('slides-grab workflow reference keeps packaged stage commands and image fallback guidance', () => {
+  const text = readFileSync('skills/slides-grab/references/presentation-workflow-reference.md', 'utf-8');
+
+  assert.doesNotMatch(text, /\.claude\/skills\//);
+  assert.doesNotMatch(text, /node scripts\//);
+  assert.match(text, /slides-grab-plan/);
+  assert.match(text, /slides-grab-design/);
+  assert.match(text, /slides-grab-export/);
+  assert.match(text, /slides-grab build-viewer/);
+  assert.match(text, /slides-grab image/i);
+  assert.match(text, /Nano Banana Pro/i);
+  assert.match(text, /GOOGLE_API_KEY|GEMINI_API_KEY/);
+  assert.match(text, /web search/i);
+});
