@@ -84,6 +84,7 @@ slides-grab figma             # Export an experimental / unstable Figma Slides i
 slides-grab pdf               # Export PDF in capture mode (default)
 slides-grab pdf --resolution 2160p  # Higher-resolution image-backed PDF export
 slides-grab pdf --mode print  # Export searchable/selectable text PDF
+slides-grab image --prompt "..."    # Generate a local slide image with Nano Banana Pro
 slides-grab fetch-video --url <youtube-url> --slides-dir decks/my-deck  # Download a local video asset with yt-dlp
 slides-grab tldraw           # Render a .tldr diagram into a slide-sized local SVG asset
 slides-grab list-templates    # Show available slide templates
@@ -100,6 +101,15 @@ Slides should store local image and video files in `<slides-dir>/assets/` and re
 - Disallowed in saved slides: remote `http(s)://` image URLs
 - Unsupported: absolute filesystem paths such as `/Users/...` or `C:\\...`
 - Unsupported for saved slides: remote video URLs; download them into `<slides-dir>/assets/` first
+
+For bespoke generated imagery, prefer Nano Banana Pro:
+
+```bash
+export GOOGLE_API_KEY=...
+slides-grab image --slides-dir decks/my-deck --prompt "Editorial hero image of a robotics warehouse at dawn"
+```
+
+The command saves the result into `<slides-dir>/assets/` and prints the portable `./assets/<file>` reference to use from slide HTML. If `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) is unavailable, ask for a Google API key or fall back to web search + local download into `assets/`.
 
 Run `slides-grab validate --slides-dir <path>` before export to catch missing local assets and discouraged path forms.
 

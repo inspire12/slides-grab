@@ -33,11 +33,13 @@ Use the installed **slides-grab-design** skill.
 3. Run validation: `slides-grab validate --slides-dir <path>`
 4. If validation fails, automatically fix the slide HTML/CSS until validation passes.
 5. Build the viewer: `slides-grab build-viewer --slides-dir <path>`
-6. For complex diagrams (architecture, workflows, relationship maps, multi-node concepts), prefer `tldraw` over hand-built HTML/CSS diagrams. Render the asset with `slides-grab tldraw`, store it under `<slides-dir>/assets/`, and place it in the slide with a normal `<img>`.
-7. Keep local videos under `<slides-dir>/assets/`, prefer `poster="./assets/<file>"` thumbnails, and use `slides-grab fetch-video --url <youtube-url> --slides-dir <path>` (or `yt-dlp` directly) when the source starts on a supported web page.
-8. Present viewer to user for review.
-9. Revise individual slides based on feedback, then re-run validation and rebuild the viewer.
-10. Optionally launch the visual editor: `slides-grab edit --slides-dir <path>`
+6. For bespoke slide imagery, use `slides-grab image --prompt "<prompt>" --slides-dir <path>` so Nano Banana Pro saves a local asset under `<slides-dir>/assets/`.
+7. For complex diagrams (architecture, workflows, relationship maps, multi-node concepts), prefer `tldraw` over hand-built HTML/CSS diagrams. Render the asset with `slides-grab tldraw`, store it under `<slides-dir>/assets/`, and place it in the slide with a normal `<img>`.
+8. Keep local videos under `<slides-dir>/assets/`, prefer `poster="./assets/<file>"` thumbnails, and use `slides-grab fetch-video --url <youtube-url> --slides-dir <path>` (or `yt-dlp` directly) when the source starts on a supported web page.
+9. If `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) is unavailable or Nano Banana is down, ask the user for a Google API key or fall back to web search/download into `<slides-dir>/assets/`.
+10. Present viewer to user for review.
+11. Revise individual slides based on feedback, then re-run validation and rebuild the viewer.
+12. Optionally launch the visual editor: `slides-grab edit --slides-dir <path>`
 
 **Do not proceed to Stage 3 without approval.**
 
@@ -61,6 +63,7 @@ Use the installed **slides-grab-export** skill.
 5. **Call out export risk clearly**: PPTX and Figma export are experimental / unstable and must be described as best-effort output.
 6. Use the stage skills as the source of truth for plan, design, and export rules.
 7. When a slide needs a complex diagram, default to a `tldraw`-generated asset unless the user explicitly asks for a different approach.
+8. When a slide needs bespoke imagery, prefer Nano Banana Pro via `slides-grab image` and keep the saved asset local under `<slides-dir>/assets/`.
 
 ## Reference
 - `references/presentation-workflow-reference.md` — archived end-to-end workflow guidance from the legacy skill set
