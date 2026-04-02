@@ -274,10 +274,14 @@ function chooseSlideFrame(metrics) {
     }))
     .sort((left, right) => right.area - left.area);
 
-  // When the body has no overflow and a good 16:9 aspect ratio, it IS the
+  // When the body has explicit slide dimensions (fills the viewport with no
+  // default margins), no overflow, and a good 16:9 aspect ratio, it IS the
   // slide frame — skip the body-child heuristic entirely.
   const bodyCandidate = candidates.find((c) => c.source === 'body');
-  if (!bodyHasOverflowingContent && bodyCandidate && bodyCandidate.aspectDelta < 0.12) {
+  const bodyMatchesViewport =
+    Math.abs(metrics.body.width - metrics.viewport.width) < 2 &&
+    Math.abs(metrics.body.height - metrics.viewport.height) < 2;
+  if (bodyMatchesViewport && !bodyHasOverflowingContent && bodyCandidate && bodyCandidate.aspectDelta < 0.12) {
     return bodyCandidate;
   }
 
@@ -654,6 +658,18 @@ export async function renderSlideToPdf(page, slideFile, slidesDir, options = {})
     };
     await page.setViewportSize(viewportSize);
     await waitForSlideRenderReady(page, { ...options, runReadySignal: false });
+    // Reset autoplay videos to show their poster instead of a mid-play frame,
+    // without replacing the <video> element (which would break slide layout).
+    await page.evaluate(() => {
+      for (const video of document.querySelectorAll('video')) {
+        video.pause();
+        video.removeAttribute('autoplay');
+        if (video.getAttribute('poster')) {
+          video.load();
+        }
+      }
+    });
+    await waitForSlideRenderReady(page, { ...options, runReadySignal: false, settleMs: 200 });
     const pngBytes = await page.screenshot({
       type: 'png',
       clip: {
