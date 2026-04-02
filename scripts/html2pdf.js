@@ -274,6 +274,13 @@ function chooseSlideFrame(metrics) {
     }))
     .sort((left, right) => right.area - left.area);
 
+  // When the body has no overflow and a good 16:9 aspect ratio, it IS the
+  // slide frame — skip the body-child heuristic entirely.
+  const bodyCandidate = candidates.find((c) => c.source === 'body');
+  if (!bodyHasOverflowingContent && bodyCandidate && bodyCandidate.aspectDelta < 0.12) {
+    return bodyCandidate;
+  }
+
   const preferredCandidate = candidates.find((candidate) => {
     if (candidate.source !== 'body-child') return false;
     if (candidate.coverage < 0.45) return false;
@@ -647,7 +654,6 @@ export async function renderSlideToPdf(page, slideFile, slidesDir, options = {})
     };
     await page.setViewportSize(viewportSize);
     await waitForSlideRenderReady(page, { ...options, runReadySignal: false });
-    await prepareVideosForExport(page);
     const pngBytes = await page.screenshot({
       type: 'png',
       clip: {
