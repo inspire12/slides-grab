@@ -26,6 +26,10 @@ function makeWorkspace(prefix = 'slides-grab-style-test-') {
   return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 test('bundled design styles preserve upstream citation metadata', () => {
   const styles = listDesignStyles();
 
@@ -198,6 +202,7 @@ test('command hints quote --slides-dir values with spaces', () => {
   const workspace = makeWorkspace();
   const slidesDir = path.join('decks', 'my demo');
   const configPath = path.join(workspace, slidesDir, STYLE_CONFIG_FILE);
+  const quotedSlidesDirPattern = `'${escapeRegExp(slidesDir)}'`;
 
   try {
     const selectOutput = execFileSync(
@@ -220,8 +225,14 @@ test('command hints quote --slides-dir values with spaces', () => {
       },
     );
 
-    assert.match(selectOutput, /preview-styles --style glassmorphism --slides-dir 'decks\/my demo'/);
-    assert.match(listOutput, /select-style <id> --slides-dir 'decks\/my demo'/);
+    assert.match(
+      selectOutput,
+      new RegExp(`preview-styles --style glassmorphism --slides-dir ${quotedSlidesDirPattern}`),
+    );
+    assert.match(
+      listOutput,
+      new RegExp(`select-style <id> --slides-dir ${quotedSlidesDirPattern}`),
+    );
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }
