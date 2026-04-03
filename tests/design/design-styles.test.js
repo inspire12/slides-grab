@@ -146,6 +146,54 @@ test('slides-grab preview-styles writes a local html gallery', () => {
   }
 });
 
+test('preview-styles keeps explicit relative --output paths rooted at cwd even with --slides-dir', () => {
+  const workspace = makeWorkspace();
+  const slidesDir = path.join('decks', 'demo');
+  const outputPath = path.join(workspace, 'custom-preview.html');
+  const rebasedPath = path.join(workspace, slidesDir, 'custom-preview.html');
+
+  try {
+    const output = execFileSync(
+      process.execPath,
+      [cliPath, 'preview-styles', '--slides-dir', slidesDir, '--output', 'custom-preview.html'],
+      {
+        cwd: workspace,
+        encoding: 'utf-8',
+      },
+    );
+
+    assert.match(output, /Wrote style preview catalog to .*custom-preview\.html/i);
+    assert.ok(existsSync(outputPath));
+    assert.equal(existsSync(rebasedPath), false);
+    assert.match(readFileSync(outputPath, 'utf-8'), /Previewing 30 bundled design styles/i);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview-styles treats explicit --output style-preview.html as cwd-relative with --slides-dir', () => {
+  const workspace = makeWorkspace();
+  const slidesDir = path.join('decks', 'demo');
+  const outputPath = path.join(workspace, 'style-preview.html');
+  const rebasedPath = path.join(workspace, slidesDir, 'style-preview.html');
+
+  try {
+    execFileSync(
+      process.execPath,
+      [cliPath, 'preview-styles', '--slides-dir', slidesDir, '--output', 'style-preview.html'],
+      {
+        cwd: workspace,
+        encoding: 'utf-8',
+      },
+    );
+
+    assert.ok(existsSync(outputPath));
+    assert.equal(existsSync(rebasedPath), false);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test('slides-grab preview-styles without --style renders the full catalog', () => {
   const workspace = makeWorkspace();
   const outputPath = path.join(workspace, 'style-catalog.html');

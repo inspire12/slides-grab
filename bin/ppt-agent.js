@@ -2,7 +2,7 @@
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import {
@@ -82,6 +82,16 @@ function resolveWorkspaceDir(slidesDir) {
 
 function buildSlidesDirSuffix(slidesDir) {
   return slidesDir ? ` --slides-dir ${slidesDir}` : '';
+}
+
+function resolvePreviewOutputPath(output, workspaceDir, explicitOutput) {
+  if (isAbsolute(output)) {
+    return output;
+  }
+  if (!explicitOutput && output === 'style-preview.html') {
+    return resolve(workspaceDir, output);
+  }
+  return resolve(process.cwd(), output);
 }
 
 function formatInvalidStyleSelectionMessage(config) {
@@ -335,12 +345,13 @@ program
   .option('--slides-dir <path>', 'Optional slides workspace used for style-config.json and default preview output')
   .option('--style <id>', 'Focus the preview on a single style id')
   .option('--output <path>', 'Output HTML path', 'style-preview.html')
-  .action(async (options = {}) => {
+  .action(async (options = {}, command) => {
     try {
       const { buildStylePreviewHtml, requireDesignStyle } = await import('../src/design-styles.js');
       const { readSelectedStyleConfig } = await import('../src/style-config.js');
       const workspaceDir = resolveWorkspaceDir(options.slidesDir);
-      const outputPath = resolve(workspaceDir, options.output);
+      const explicitOutput = command?.getOptionValueSource('output') === 'cli';
+      const outputPath = resolvePreviewOutputPath(String(options.output), workspaceDir, explicitOutput);
       const currentSelection = await readSelectedStyleConfig(workspaceDir, { allowInvalidSelection: true });
       const selectedStyle = options.style ? requireDesignStyle(String(options.style)) : null;
       const html = buildStylePreviewHtml({
