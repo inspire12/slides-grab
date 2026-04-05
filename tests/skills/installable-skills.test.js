@@ -112,9 +112,11 @@ test('slides-grab design skill keeps the packaged style-discovery CLI guidance',
   assert.match(text, /GOOGLE_API_KEY|GEMINI_API_KEY/);
 });
 
-test('slides-grab design rules keep packaged image and video asset commands', () => {
+test('slides-grab design rules keep packaged style, image, and video asset commands', () => {
   const text = readFileSync('skills/slides-grab-design/references/design-rules.md', 'utf-8');
 
+  assert.match(text, /slides-grab list-styles/);
+  assert.match(text, /slides-grab preview-styles/);
   assert.match(text, /slides-grab image/i);
   assert.match(text, /slides-grab fetch-video/i);
   assert.match(text, /local videos and their poster thumbnails/i);
