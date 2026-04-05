@@ -14,8 +14,7 @@ Generate high-quality `slide-XX.html` files in the selected slides workspace (`s
 
 ## Inputs
 - Approved `slide-outline.md`
-- Optional approved `style-config.json`
-- Theme/layout preferences
+- Style/layout preferences (from conversation or `slides-grab list-styles`)
 - Requested edits per slide
 
 ## Outputs
@@ -24,7 +23,7 @@ Generate high-quality `slide-XX.html` files in the selected slides workspace (`s
 
 ## Workflow
 1. Read approved `slide-outline.md`.
-2. If `style-config.json` exists, read it before deciding the visual direction. When the design direction is still open, suggest `slides-grab list-styles`, optionally `slides-grab preview-styles --style <id>`, and confirm the user-approved style before generation.
+2. When the design direction is still open, suggest `slides-grab list-styles`, optionally `slides-grab preview-styles`, and agree on a direction with the user before generation. If none of the bundled styles fit, design a fully custom visual direction.
 3. Before generating slides, write a quick **visual thesis** (mood/material/energy), a **content plan** (opener → support/proof → detail/story → close/CTA), and the core design tokens (background, surface, text, muted, accent + display/headline/body/caption roles).
 4. Generate slide HTML files with 2-digit numbering in selected `--slides-dir`.
 5. When a slide explicitly needs bespoke imagery, when the user asks for an image, or when stronger imagery would materially improve the slide, prefer `slides-grab image --prompt "<prompt>" --slides-dir <path>` to generate a local asset with Nano Banana Pro and save it under `<slides-dir>/assets/`.
