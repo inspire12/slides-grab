@@ -4,6 +4,9 @@ This prompt is sent to Codex when the editor requests a single-slide edit.
 It is intentionally separate from the full design skill (SKILL.md) because
 the editor context assumes the deck design is already established.
 
+## Primary Objective
+The user's edit request is the primary objective. All rules below exist to support it, not override it. When a rule conflicts with the user's intent, follow the user.
+
 ## Edit Workflow
 1. Read the target slide HTML file.
 2. Apply the user's edit request to the selected region.
@@ -17,7 +20,6 @@ the editor context assumes the deck design is already established.
 - Never place text directly in `<div>` or `<span>`.
 - Always include `#` prefix in CSS colors.
 - Always include the Pretendard webfont CDN link.
-- CSS gradients are not supported in PowerPoint conversion; use solid colors or background images.
 
 ## Asset Rules
 - Put local images and videos under `<slides-dir>/assets/` and reference as `./assets/<file>`.

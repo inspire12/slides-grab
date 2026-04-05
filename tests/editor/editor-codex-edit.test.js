@@ -79,10 +79,10 @@ test('buildCodexEditPrompt includes user prompt, bbox, and XPath targets', () =>
   assert.match(prompt, /Q1 Revenue/);
   assert.match(prompt, /Region 1/);
   assert.match(prompt, /Slide edit rules \(follow strictly\):/);
+  assert.match(prompt, /primary objective/i);
   assert.match(prompt, /Keep slide size 720pt x 405pt\./);
   assert.match(prompt, /slides-grab image/i);
   assert.match(prompt, /GOOGLE_API_KEY|GEMINI_API_KEY/);
-  assert.match(prompt, /CSS gradients.*not supported in PowerPoint conversion/i);
   assert.match(prompt, /Edit only the requested slide HTML file among slide-\*\.html files\./);
   assert.match(prompt, /Do not modify any other slide HTML files unless explicitly requested\./);
   assert.match(prompt, /Do not persist runtime-only editor\/viewer injections/);
