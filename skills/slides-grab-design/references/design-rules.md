@@ -52,7 +52,7 @@ These are the packaged design rules for installable `slides-grab` skills.
 - `src/design-styles-data.js` — full style specs (colors, fonts, layout, signature elements, things to avoid) for all 35 bundled styles; read this after the user picks a style to ground your design tokens
 
 ## Review loop
-- If the design direction is still open, shortlist bundled styles first and agree on a direction with the user before generating slides. If none of the 35 bundled styles fit, design a fully custom visual direction.
+- The design style is chosen in Stage 1 (Plan) and recorded in `slide-outline.md`'s meta section (`style: <id>`). Do not re-open style selection in Stage 2 — read and apply the already-approved style.
 - Generate or edit only the needed slide files.
 - Prefer `slides-grab image` before remote image sourcing when the slide needs bespoke imagery.
 - Prefer `tldraw` for complex diagrams instead of hand-building dense diagram geometry in HTML/CSS.

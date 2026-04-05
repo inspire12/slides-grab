@@ -13,8 +13,7 @@ Use this after `slide-outline.md` is approved.
 Generate high-quality `slide-XX.html` files in the selected slides workspace (`slides/` by default) and support revision loops.
 
 ## Inputs
-- Approved `slide-outline.md`
-- Style/layout preferences (from conversation or `slides-grab list-styles`)
+- Approved `slide-outline.md` (must contain `style: <id>` in meta section — style was approved in Stage 1)
 - Requested edits per slide
 
 ## Outputs
@@ -22,10 +21,9 @@ Generate high-quality `slide-XX.html` files in the selected slides workspace (`s
 - Updated `<slides-dir>/viewer.html` via build script
 
 ## Workflow
-1. Read approved `slide-outline.md`.
-2. When the design direction is still open, suggest `slides-grab list-styles`, optionally `slides-grab preview-styles`, and agree on a direction with the user before generation. If none of the bundled styles fit, design a fully custom visual direction.
-3. After agreeing on a style, read its full spec from `src/design-styles-data.js` — colors, fonts, layout, signature elements, and things to avoid. Use those fields as the foundation for the next step.
-4. Before generating slides, write a quick **visual thesis** (mood/material/energy), a **content plan** (opener → support/proof → detail/story → close/CTA), and the core design tokens (background, surface, text, muted, accent + display/headline/body/caption roles). Ground these tokens in the chosen style's spec.
+1. Read approved `slide-outline.md` and extract the `style` field from its meta section.
+2. Load the chosen style's full spec from `src/design-styles-data.js` — colors, fonts, layout, signature elements, and things to avoid. If the meta specifies a custom direction instead of a bundled ID, use that custom direction as the design basis.
+3. Before generating slides, write a quick **visual thesis** (mood/material/energy), a **content plan** (opener → support/proof → detail/story → close/CTA), and the core design tokens (background, surface, text, muted, accent + display/headline/body/caption roles). Ground these tokens in the chosen style's spec.
 5. Generate slide HTML files with 2-digit numbering in selected `--slides-dir`.
 6. When a slide explicitly needs bespoke imagery, when the user asks for an image, or when stronger imagery would materially improve the slide, prefer `slides-grab image --prompt "<prompt>" --slides-dir <path>` to generate a local asset with Nano Banana Pro and save it under `<slides-dir>/assets/`.
 7. If the deck needs a complex diagram (architecture, workflows, relationship maps, multi-node concepts), create the diagram in `tldraw`, export it with `slides-grab tldraw`, and treat the result as a local slide asset under `<slides-dir>/assets/`.
