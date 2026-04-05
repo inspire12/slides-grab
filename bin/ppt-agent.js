@@ -278,15 +278,12 @@ program
 
 program
   .command('preview-styles')
-  .description('Open the bundled 35-style visual preview gallery in the default browser')
+  .description('Print the path to the bundled 35-style visual preview gallery')
   .action(async () => {
     try {
       const { getPreviewHtmlPath } = await import('../src/design-styles.js');
       const previewPath = getPreviewHtmlPath();
-      const { exec } = await import('node:child_process');
-      const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-      exec(`${cmd} "${previewPath}"`);
-      console.log(`Opening style preview: ${previewPath}`);
+      console.log(previewPath);
     } catch (error) {
       reportCliError(error);
     }
