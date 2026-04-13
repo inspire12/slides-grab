@@ -96,14 +96,24 @@ export function parseCliArgs(args) {
   return options;
 }
 
+function toSlideOrder(fileName) {
+  const match = fileName.match(/\d+/);
+  return match ? Number.parseInt(match[0], 10) : Number.POSITIVE_INFINITY;
+}
+
+function sortSlideFiles(a, b) {
+  const orderA = toSlideOrder(a);
+  const orderB = toSlideOrder(b);
+  if (orderA !== orderB) {
+    return orderA - orderB;
+  }
+  return a.localeCompare(b);
+}
+
 export function findSlideFiles(slidesDir) {
   return readdirSync(slidesDir)
-    .filter((file) => /^slide-\d+\.html$/i.test(file))
-    .sort((a, b) => {
-      const numA = parseInt(a.match(/\d+/)[0], 10);
-      const numB = parseInt(b.match(/\d+/)[0], 10);
-      return numA - numB || a.localeCompare(b);
-    });
+    .filter((file) => /^slide-.*\.html$/i.test(file))
+    .sort(sortSlideFiles);
 }
 
 /**
