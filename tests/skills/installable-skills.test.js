@@ -160,6 +160,22 @@ test('slides-grab design rules advertise both packaged image and video asset com
   assert.match(text, /slides-grab fetch-video/i);
 });
 
+test('slides-grab packaged guidance prefers Lucide as the default icon library', () => {
+  const designSkill = readFileSync('skills/slides-grab-design/SKILL.md', 'utf-8');
+  const designRules = readFileSync('skills/slides-grab-design/references/design-rules.md', 'utf-8');
+  const exportReference = readFileSync('skills/slides-grab-export/references/html2pptx.md', 'utf-8');
+  const packageManifest = JSON.parse(readFileSync('package.json', 'utf-8'));
+
+  assert.match(designSkill, /Lucide/i);
+  assert.match(designSkill, /prefer Lucide/i);
+  assert.match(designRules, /Lucide/i);
+  assert.match(designRules, /avoid emoji as the default/i);
+  assert.match(exportReference, /lucide-react/);
+  assert.doesNotMatch(exportReference, /react-icons/);
+  assert.match(packageManifest.dependencies['lucide-react'], /^\^?\d+\.\d+\.\d+$/);
+  assert.equal(packageManifest.dependencies['react-icons'], undefined);
+});
+
 
 test('slides-grab card-news skill documents square Instagram workflow via packaged commands', () => {
   const text = readFileSync('skills/slides-grab-card-news/SKILL.md', 'utf-8');
