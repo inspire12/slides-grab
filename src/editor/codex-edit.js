@@ -28,8 +28,12 @@ const EDITOR_PPT_DESIGN_SECTION_HEADINGS = [
 const DETAILED_DESIGN_SECTION_HEADINGS = [
   '## Base Settings',
   '## Text Usage Rules',
+  '## Icon Usage Rules',
   '## Workflow (Stage 2: Design + Human Review)',
   '## Important Notes',
+];
+const DETAILED_DESIGN_REQUIRED_SECTION_HEADINGS = [
+  '## Icon Usage Rules',
 ];
 const BEAUTIFUL_SLIDE_DEFAULTS_SECTION_HEADINGS = [
   '## Working Model',
@@ -59,6 +63,8 @@ const EDITOR_PPT_DESIGN_SKILL_FALLBACK = [
   '## Rules',
   '- Keep slide size 720pt x 405pt.',
   '- Keep semantic text tags (`p`, `h1-h6`, `ul`, `ol`, `li`).',
+  '- Prefer Lucide as the default icon library for slide UI elements, callouts, and supporting visuals.',
+  '- Do not default to emoji for iconography unless the brief explicitly asks for a playful or native-emoji tone.',
   '- Put local images and videos under `<slides-dir>/assets/` and reference them as `./assets/<file>`.',
   '- Allow `data:` URLs when the slide must be fully self-contained.',
   '- Do not leave remote `http(s)://` image URLs in saved slide HTML; download source images into `<slides-dir>/assets/` and reference them as `./assets/<file>`.',
@@ -97,8 +103,14 @@ const DETAILED_DESIGN_SKILL_FALLBACK = [
   '- All text must be inside <p>, <h1>-<h6>, <ul>, <ol>, or <li>.',
   '- Never place text directly in <div> or <span>.',
   '',
+  '## Icon Usage Rules',
+  '- Prefer Lucide as the default icon library for slide UI elements, callouts, and supporting visuals.',
+  '- Do not default to emoji for iconography; reserve emoji for cases where the brief explicitly wants a playful or native-emoji tone.',
+  '- Keep icon sizing, stroke weight, and color aligned with the deck\'s approved design tokens.',
+  '',
   '## Workflow (Stage 2: Design + Human Review)',
-  '- After slide generation or edits, run slides-grab build-viewer --slides-dir <path>.',
+  '- After slide generation or edits, run slides-grab validate --slides-dir <path>.',
+  '- Only after validation passes, run slides-grab build-viewer --slides-dir <path>.',
   '- Edit only the relevant HTML file during revision loops.',
   '- Prefer slides-grab image before remote image sourcing when a slide explicitly needs bespoke imagery.',
   '- Never start PPTX conversion without explicit approval.',
@@ -291,14 +303,20 @@ function pruneDuplicateLines(markdown, patterns) {
   return filtered.join('\n').trim();
 }
 
-function loadMarkdownSections(markdownPath, headings, fallback) {
+function loadMarkdownSections(markdownPath, headings, fallback, options = {}) {
   try {
     const markdown = readFileSync(markdownPath, 'utf8');
+    const { requiredHeadings = [] } = options;
+    const sectionsByHeading = new Map(headings.map((heading) => [
+      heading,
+      extractMarkdownSection(markdown, heading),
+    ]));
     const sections = headings
-      .map((heading) => extractMarkdownSection(markdown, heading))
+      .map((heading) => sectionsByHeading.get(heading))
       .filter(Boolean);
+    const isMissingRequiredSection = requiredHeadings.some((requiredHeading) => !sectionsByHeading.get(requiredHeading));
 
-    return sections.length > 0
+    return sections.length > 0 && !isMissingRequiredSection
       ? sections.join('\n\n')
       : fallback;
   } catch {
@@ -315,6 +333,9 @@ function getStructuralDesignSkillPrompt() {
     DETAILED_DESIGN_SKILL_PATH,
     DETAILED_DESIGN_SECTION_HEADINGS,
     DETAILED_DESIGN_SKILL_FALLBACK,
+    {
+      requiredHeadings: DETAILED_DESIGN_REQUIRED_SECTION_HEADINGS,
+    },
   );
 
   return cachedStructuralDesignSkillPrompt;
