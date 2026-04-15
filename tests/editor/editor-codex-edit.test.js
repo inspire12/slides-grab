@@ -180,6 +180,12 @@ test('getDetailedDesignSkillPrompt falls back when packaged icon guidance sectio
     assert.match(detailedPrompt, /## Icon Usage Rules/);
     assert.match(detailedPrompt, /Prefer Lucide as the default icon library/i);
     assert.match(detailedPrompt, /Do not default to emoji/i);
+    assert.match(detailedPrompt, /slides-grab validate --slides-dir <path>/i);
+    assert.match(detailedPrompt, /slides-grab build-viewer --slides-dir <path>/i);
+    assert.ok(
+      detailedPrompt.indexOf('slides-grab validate --slides-dir <path>')
+      < detailedPrompt.indexOf('slides-grab build-viewer --slides-dir <path>'),
+    );
   } finally {
     writeFileSync(DETAILED_DESIGN_RULES_URL, originalMarkdown);
   }
