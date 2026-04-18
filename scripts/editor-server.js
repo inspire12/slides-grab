@@ -2,12 +2,13 @@
 
 import { readdir, readFile, writeFile, mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { watch as fsWatch } from 'node:fs';
+import net from 'node:net';
+import { createRequire } from 'node:module';
 import { basename, dirname, join, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import {
-  SLIDE_SIZE,
   buildCodexEditPrompt,
   buildCodexExecArgs,
   buildClaudeExecArgs,
@@ -22,6 +23,14 @@ import {
   runEditSubprocess,
 } from '../src/editor/edit-subprocess.js';
 import { buildSlideRuntimeHtml } from '../src/image-contract.js';
+
+const require = createRequire(import.meta.url);
+const {
+  DEFAULT_SLIDE_MODE,
+  getSlideModeChoices,
+  getSlideModeConfig,
+  normalizeSlideMode,
+} = require('../src/slide-mode.cjs');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,6 +54,8 @@ const CODEX_MODELS = ['gpt-5.4', 'gpt-5.3-codex', 'gpt-5.3-codex-spark'];
 const ALL_MODELS = [...CODEX_MODELS, ...CLAUDE_MODELS];
 const DEFAULT_CODEX_MODEL = CODEX_MODELS[0];
 const SLIDE_FILE_PATTERN = /^slide-.*\.html$/i;
+const PORT_PROBE_HOSTS = ['::', '127.0.0.1'];
+const PORT_PROBE_IGNORED_CODES = new Set(['EAFNOSUPPORT', 'EADDRNOTAVAIL']);
 
 const MAX_RUNS = 200;
 const MAX_LOG_CHARS = 800_000;
@@ -55,6 +66,7 @@ function printUsage() {
   process.stdout.write(`Options:\n`);
   process.stdout.write(`  --port <number>           Server port (default: ${DEFAULT_PORT})\n`);
   process.stdout.write(`  --slides-dir <path>       Slide directory (default: ${DEFAULT_SLIDES_DIR})\n`);
+  process.stdout.write(`  --mode <mode>             Slide mode: ${getSlideModeChoices().join(', ')} (default: ${DEFAULT_SLIDE_MODE})\n`);
   process.stdout.write(`  Model is selected in editor UI dropdown.\n`);
   process.stdout.write(`  -h, --help                Show this help message\n`);
 }
@@ -63,6 +75,7 @@ function parseArgs(argv) {
   const opts = {
     port: DEFAULT_PORT,
     slidesDir: DEFAULT_SLIDES_DIR,
+    mode: DEFAULT_SLIDE_MODE,
     help: false,
   };
 
@@ -95,6 +108,17 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--mode') {
+      opts.mode = normalizeSlideMode(argv[i + 1]);
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith('--mode=')) {
+      opts.mode = normalizeSlideMode(arg.slice('--mode='.length));
+      continue;
+    }
+
     if (arg === '--codex-model') {
       // Backward compatibility: ignore legacy CLI option.
       i += 1;
@@ -113,8 +137,65 @@ function parseArgs(argv) {
   }
 
   opts.slidesDir = opts.slidesDir.trim();
+  opts.mode = normalizeSlideMode(opts.mode);
 
   return opts;
+}
+
+function buildPortInUseError(port) {
+  return new Error(`Editor port ${port} is already in use. Choose another port with \`--port <number>\` and try again.`);
+}
+
+async function assertHostPortAvailable(port, host) {
+  const probe = net.createServer();
+  try {
+    await new Promise((resolve, reject) => {
+      probe.once('error', reject);
+      probe.listen({ port, host, exclusive: true }, resolve);
+    });
+  } catch (error) {
+    if (error?.code === 'EADDRINUSE') {
+      throw buildPortInUseError(port);
+    }
+
+    if (PORT_PROBE_IGNORED_CODES.has(error?.code)) {
+      return;
+    }
+
+    throw error;
+  } finally {
+    if (probe.listening) {
+      await new Promise((resolve, reject) => {
+        probe.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    }
+  }
+}
+
+async function assertPortUsable(port) {
+  for (const host of PORT_PROBE_HOSTS) {
+    await assertHostPortAvailable(port, host);
+  }
+}
+
+async function listenOnPort(app, port) {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => resolve(server));
+    server.once('error', (error) => {
+      if (error?.code === 'EADDRINUSE') {
+        reject(buildPortInUseError(port));
+        return;
+      }
+
+      reject(error);
+    });
+  });
 }
 
 const sseClients = new Set();
@@ -143,9 +224,9 @@ async function closeBrowser() {
   }
 }
 
-async function withScreenshotPage(callback) {
+async function withScreenshotPage(callback, screenshotSize) {
   const { browser } = await getScreenshotBrowser();
-  const { context, page } = await screenshotMod.createScreenshotPage(browser);
+  const { context, page } = await screenshotMod.createScreenshotPage(browser, screenshotSize);
   try {
     return await callback(page);
   } finally {
@@ -205,7 +286,7 @@ function sanitizeTargets(rawTargets) {
     .filter((target) => target.xpath);
 }
 
-function normalizeSelections(rawSelections) {
+function normalizeSelections(rawSelections, slideSize) {
   if (!Array.isArray(rawSelections) || rawSelections.length === 0) {
     throw new Error('At least one selection is required.');
   }
@@ -215,7 +296,7 @@ function normalizeSelections(rawSelections) {
       ? selection.bbox
       : selection;
 
-    const bbox = normalizeSelection(selectionSource, SLIDE_SIZE);
+    const bbox = normalizeSelection(selectionSource, slideSize);
     const targets = sanitizeTargets(selection?.targets);
 
     return { bbox, targets };
@@ -392,6 +473,7 @@ function createRunStore() {
 }
 
 async function startServer(opts) {
+  await assertPortUsable(opts.port);
   await loadDeps();
   const slidesDirectory = resolve(process.cwd(), opts.slidesDir);
   await mkdir(slidesDirectory, { recursive: true });
@@ -502,6 +584,18 @@ async function startServer(opts) {
     }
   });
 
+  app.get('/api/config', (_req, res) => {
+    const cfg = getSlideModeConfig(opts.mode);
+    res.json({
+      slideMode: opts.mode,
+      framePx: { width: cfg.framePx.width, height: cfg.framePx.height },
+      screenshotPx: { width: cfg.screenshotPx.width, height: cfg.screenshotPx.height },
+      sizeLabel: cfg.sizeLabel,
+      aspectRatioLabel: cfg.aspectRatioLabel,
+      coordinateSpaceLabel: cfg.coordinateSpaceLabel,
+    });
+  });
+
   app.get('/api/models', (_req, res) => {
     res.json({
       models: ALL_MODELS,
@@ -570,7 +664,7 @@ async function startServer(opts) {
 
     let normalizedSelections;
     try {
-      normalizedSelections = normalizeSelections(selections);
+      normalizedSelections = normalizeSelections(selections, getSlideModeConfig(opts.mode).framePx);
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -605,15 +699,15 @@ async function startServer(opts) {
           slide,
           screenshotPath,
           `http://localhost:${opts.port}/slides`,
-          { useHttp: true },
+          { useHttp: true, screenshotSize: getSlideModeConfig(opts.mode).screenshotPx },
         );
-      });
+      }, getSlideModeConfig(opts.mode).screenshotPx);
 
       const scaledBoxes = normalizedSelections.map((selection) =>
         scaleSelectionToScreenshot(
           selection.bbox,
-          SLIDE_SIZE,
-          screenshotMod.SCREENSHOT_SIZE,
+          getSlideModeConfig(opts.mode).framePx,
+          getSlideModeConfig(opts.mode).screenshotPx,
         ),
       );
 
@@ -623,6 +717,7 @@ async function startServer(opts) {
         slideFile: slide,
         slidePath: toSlidePathLabel(slidesDirectory, slide),
         userPrompt: prompt,
+        slideMode: opts.mode,
         selections: normalizedSelections,
       });
 
@@ -708,14 +803,14 @@ async function startServer(opts) {
     }, 300);
   });
 
-  const server = app.listen(opts.port, () => {
-    process.stdout.write('\n  slides-grab editor\n');
-    process.stdout.write('  ─────────────────────────────────────\n');
-    process.stdout.write(`  Local:       http://localhost:${opts.port}\n`);
-    process.stdout.write(`  Models:      ${ALL_MODELS.join(', ')}\n`);
-    process.stdout.write(`  Slides:      ${slidesDirectory}\n`);
-    process.stdout.write('  ─────────────────────────────────────\n\n');
-  });
+  const server = await listenOnPort(app, opts.port);
+
+  process.stdout.write('\n  slides-grab editor\n');
+  process.stdout.write('  ─────────────────────────────────────\n');
+  process.stdout.write(`  Local:       http://localhost:${opts.port}\n`);
+  process.stdout.write(`  Models:      ${ALL_MODELS.join(', ')}\n`);
+  process.stdout.write(`  Slides:      ${slidesDirectory}\n`);
+  process.stdout.write('  ─────────────────────────────────────\n\n');
 
   async function shutdown() {
     process.stdout.write('\n[editor] Shutting down...\n');

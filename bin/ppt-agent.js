@@ -27,7 +27,7 @@ const figmaHelpText = [
 
 /**
  * Run a Node.js script from the package, with CWD set to the user's directory.
- * Scripts resolve slide paths via --slides-dir and templates/themes via src/resolve.js.
+ * Scripts resolve slide paths via --slides-dir and templates via src/resolve.js.
  */
 function runNodeScript(relativePath, args = []) {
   return new Promise((resolvePromise, rejectPromise) => {
@@ -68,6 +68,12 @@ function collectRepeatedOption(value, previous = []) {
   return [...previous, value];
 }
 
+function reportCliError(error) {
+  console.error(`[slides-grab] ${error.message}`);
+  process.exitCode = 1;
+}
+
+
 const program = new Command();
 
 program
@@ -81,8 +87,9 @@ program
   .command('build-viewer')
   .description('Build viewer.html from slide HTML files')
   .option('--slides-dir <path>', 'Slide directory', 'slides')
+  .option('--mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
   .action(async (options = {}) => {
-    const args = ['--slides-dir', options.slidesDir];
+    const args = ['--slides-dir', options.slidesDir, '--mode', options.mode];
     await runCommand('scripts/build-viewer.js', args);
   });
 
@@ -92,9 +99,10 @@ program
   .description('Run structured validation on slide HTML files (Playwright-based)')
   .option('--slides-dir <path>', 'Slide directory', 'slides')
   .option('--format <format>', 'Output format: concise, json, json-full', 'concise')
+  .option('--mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
   .option('--slide <file>', 'Validate only the named slide file (repeatable)', collectRepeatedOption, [])
   .action(async (options = {}) => {
-    const args = ['--slides-dir', options.slidesDir, '--format', options.format];
+    const args = ['--slides-dir', options.slidesDir, '--format', options.format, '--mode', options.mode];
     for (const slide of options.slide || []) {
       args.push('--slide', String(slide));
     }
@@ -106,9 +114,10 @@ program
   .description('Convert slide HTML files to experimental / unstable PPTX')
   .option('--slides-dir <path>', 'Slide directory', 'slides')
   .option('--output <path>', 'Output PPTX file')
+  .option('--mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
   .option('--resolution <preset>', 'Raster size preset: 720p, 1080p, 1440p, 2160p, or 4k (default: 2160p)')
   .action(async (options = {}) => {
-    const args = ['--slides-dir', options.slidesDir];
+    const args = ['--slides-dir', options.slidesDir, '--mode', options.mode];
     if (options.output) {
       args.push('--output', String(options.output));
     }
@@ -124,6 +133,7 @@ program
   .option('--slides-dir <path>', 'Slide directory', 'slides')
   .option('--output <path>', 'Output PDF file')
   .option('--mode <mode>', 'PDF export mode: capture for visual fidelity, print for searchable text', 'capture')
+  .option('--slide-mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
   .option('--resolution <preset>', 'Capture raster size preset: 720p, 1080p, 1440p, 2160p, or 4k (default: 2160p in capture mode)')
   .action(async (options = {}) => {
     const args = ['--slides-dir', options.slidesDir];
@@ -133,10 +143,34 @@ program
     if (options.mode) {
       args.push('--mode', String(options.mode));
     }
+    if (options.slideMode) {
+      args.push('--slide-mode', String(options.slideMode));
+    }
     if (options.resolution) {
       args.push('--resolution', String(options.resolution));
     }
     await runCommand('scripts/html2pdf.js', args);
+  });
+
+program
+  .command('png')
+  .description('Render slide HTML files to one PNG per slide')
+  .option('--slides-dir <path>', 'Slide directory', 'slides')
+  .option('--output-dir <path>', 'Output directory for PNG files (default: <slides-dir>/out-png)')
+  .option('--slide-mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
+  .option('--resolution <preset>', 'Raster size preset: 720p, 1080p, 1440p, 2160p, or 4k', '2160p')
+  .action(async (options = {}) => {
+    const args = ['--slides-dir', options.slidesDir];
+    if (options.outputDir) {
+      args.push('--output-dir', String(options.outputDir));
+    }
+    if (options.slideMode) {
+      args.push('--slide-mode', String(options.slideMode));
+    }
+    if (options.resolution) {
+      args.push('--resolution', String(options.resolution));
+    }
+    await runCommand('scripts/html2png.js', args);
   });
 
 program
@@ -159,9 +193,10 @@ program
   .helpOption('-h, --help', 'Show this help message')
   .option('--slides-dir <path>', 'Slide directory', 'slides')
   .option('--output <path>', 'Output PPTX file (default: <slides-dir>-figma.pptx)')
+  .option('--mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
   .addHelpText('after', figmaHelpText)
   .action(async (options = {}) => {
-    const args = ['--slides-dir', options.slidesDir];
+    const args = ['--slides-dir', options.slidesDir, '--mode', options.mode];
     if (options.output) {
       args.push('--output', String(options.output));
     }
@@ -216,15 +251,16 @@ program
   .description('Start interactive slide editor with Codex image-based edit flow')
   .option('--port <number>', 'Server port')
   .option('--slides-dir <path>', 'Slide directory', 'slides')
+  .option('--mode <mode>', 'Slide mode: presentation or card-news', 'presentation')
   .action(async (options = {}) => {
-    const args = ['--slides-dir', options.slidesDir];
+    const args = ['--slides-dir', options.slidesDir, '--mode', options.mode];
     if (options.port) {
       args.push('--port', String(options.port));
     }
     await runCommand('scripts/editor-server.js', args);
   });
 
-// --- Template/theme discovery commands ---
+// --- Template/style discovery commands ---
 
 program
   .command('list-templates')
@@ -245,21 +281,42 @@ program
   });
 
 program
-  .command('list-themes')
-  .description('List all available color themes (local overrides + package built-ins)')
+  .command('list-styles')
+  .description('List bundled design styles agents and users can reference during slide generation')
   .action(async () => {
-    const { listThemes } = await import('../src/resolve.js');
-    const themes = listThemes();
-    if (themes.length === 0) {
-      console.log('No themes found.');
-      return;
+    try {
+      const { listDesignStyles } = await import('../src/design-styles.js');
+      const styles = listDesignStyles();
+
+      if (styles.length === 0) {
+        console.log('No bundled design styles found.');
+        return;
+      }
+
+      console.log('Available design styles:\n');
+      for (const style of styles) {
+        console.log(`  ${style.id.padEnd(22)} ${style.title}`);
+        console.log(`    ${style.mood} · ${style.bestFor}`);
+      }
+
+      console.log(`\nTotal: ${styles.length} styles`);
+      console.log('Preview: slides-grab preview-styles [--style <id>]');
+    } catch (error) {
+      reportCliError(error);
     }
-    console.log('Available themes:\n');
-    for (const t of themes) {
-      const tag = t.source === 'local' ? '(local)' : '(built-in)';
-      console.log(`  ${t.name.padEnd(20)} ${tag}`);
+  });
+
+program
+  .command('preview-styles')
+  .description('Print the path to the bundled 35-style visual preview gallery')
+  .action(async () => {
+    try {
+      const { getPreviewHtmlPath } = await import('../src/design-styles.js');
+      const previewPath = getPreviewHtmlPath();
+      console.log(previewPath);
+    } catch (error) {
+      reportCliError(error);
     }
-    console.log(`\nTotal: ${themes.length} themes`);
   });
 
 program
@@ -280,22 +337,5 @@ program
     console.log(content);
   });
 
-program
-  .command('show-theme')
-  .description('Print the contents of a theme file')
-  .argument('<name>', 'Theme name (e.g. "modern-dark", "executive")')
-  .action(async (name) => {
-    const { resolveTheme } = await import('../src/resolve.js');
-    const result = resolveTheme(name);
-    if (!result) {
-      console.error(`Theme "${name}" not found.`);
-      process.exitCode = 1;
-      return;
-    }
-    const content = readFileSync(result.path, 'utf-8');
-    console.log(`/* Theme: ${name} (${result.source}) */`);
-    console.log(`/* Path: ${result.path} */\n`);
-    console.log(content);
-  });
 
 await program.parseAsync(process.argv);

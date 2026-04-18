@@ -1,13 +1,24 @@
 import { readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 
 import { getPackageRoot } from '../resolve.js';
 
+const require = createRequire(import.meta.url);
+const {
+  DEFAULT_SLIDE_MODE,
+  getSlideModeConfig,
+} = require('../slide-mode.cjs');
+
 export const SLIDE_SIZE = { width: 960, height: 540 };
+export function getSlideSize(slideMode = DEFAULT_SLIDE_MODE) {
+  return getSlideModeConfig(slideMode).framePx;
+}
 
 const PPT_DESIGN_SKILL_PATH = join(getPackageRoot(), 'skills', 'slides-grab-design', 'SKILL.md');
+const EDITOR_CODEX_PROMPT_PATH = join(dirname(new URL(import.meta.url).pathname), 'editor-codex-prompt.md');
 const DETAILED_DESIGN_SKILL_PATH = join(getPackageRoot(), 'skills', 'slides-grab-design', 'references', 'detailed-design-rules.md');
 const BEAUTIFUL_SLIDE_DEFAULTS_PATH = join(getPackageRoot(), 'skills', 'slides-grab-design', 'references', 'beautiful-slide-defaults.md');
 const EDITOR_PPT_DESIGN_SECTION_HEADINGS = [
@@ -17,8 +28,12 @@ const EDITOR_PPT_DESIGN_SECTION_HEADINGS = [
 const DETAILED_DESIGN_SECTION_HEADINGS = [
   '## Base Settings',
   '## Text Usage Rules',
+  '## Icon Usage Rules',
   '## Workflow (Stage 2: Design + Human Review)',
   '## Important Notes',
+];
+const DETAILED_DESIGN_REQUIRED_SECTION_HEADINGS = [
+  '## Icon Usage Rules',
 ];
 const BEAUTIFUL_SLIDE_DEFAULTS_SECTION_HEADINGS = [
   '## Working Model',
@@ -48,6 +63,8 @@ const EDITOR_PPT_DESIGN_SKILL_FALLBACK = [
   '## Rules',
   '- Keep slide size 720pt x 405pt.',
   '- Keep semantic text tags (`p`, `h1-h6`, `ul`, `ol`, `li`).',
+  '- Prefer Lucide as the default icon library for slide UI elements, callouts, and supporting visuals.',
+  '- Do not default to emoji for iconography unless the brief explicitly asks for a playful or native-emoji tone.',
   '- Put local images and videos under `<slides-dir>/assets/` and reference them as `./assets/<file>`.',
   '- Allow `data:` URLs when the slide must be fully self-contained.',
   '- Do not leave remote `http(s)://` image URLs in saved slide HTML; download source images into `<slides-dir>/assets/` and reference them as `./assets/<file>`.',
@@ -86,15 +103,21 @@ const DETAILED_DESIGN_SKILL_FALLBACK = [
   '- All text must be inside <p>, <h1>-<h6>, <ul>, <ol>, or <li>.',
   '- Never place text directly in <div> or <span>.',
   '',
+  '## Icon Usage Rules',
+  '- Prefer Lucide as the default icon library for slide UI elements, callouts, and supporting visuals.',
+  '- Do not default to emoji for iconography; reserve emoji for cases where the brief explicitly wants a playful or native-emoji tone.',
+  '- Keep icon sizing, stroke weight, and color aligned with the deck\'s approved design tokens.',
+  '',
   '## Workflow (Stage 2: Design + Human Review)',
-  '- After slide generation or edits, run slides-grab build-viewer --slides-dir <path>.',
+  '- After slide generation or edits, run slides-grab validate --slides-dir <path>.',
+  '- Only after validation passes, run slides-grab build-viewer --slides-dir <path>.',
   '- Edit only the relevant HTML file during revision loops.',
   '- Prefer slides-grab image before remote image sourcing when a slide explicitly needs bespoke imagery.',
   '- Never start PPTX conversion without explicit approval.',
   '- Never forget to rebuild the viewer after slide changes.',
   '',
   '## Important Notes',
-  '- CSS gradients are not supported in PowerPoint conversion; replace them with background images.',
+  '- CSS gradients may not export cleanly to all formats; prefer solid colors or background images when possible.',
   '- Always include the Pretendard CDN link.',
   '- Use ./assets/<file> from each slide-XX.html for local images and videos, and avoid absolute filesystem paths.',
   '- Always include # prefix in CSS colors.',
@@ -225,16 +248,11 @@ function getEditorPptDesignSkillPrompt() {
     return cachedEditorPptDesignSkillPrompt;
   }
 
-  const prompt = loadMarkdownSections(
-    PPT_DESIGN_SKILL_PATH,
-    EDITOR_PPT_DESIGN_SECTION_HEADINGS,
-    EDITOR_PPT_DESIGN_SKILL_FALLBACK,
-  );
-
-  cachedEditorPptDesignSkillPrompt = pruneDuplicateLines(
-    prompt,
-    EDITOR_PPT_DESIGN_DUPLICATE_PATTERNS,
-  );
+  try {
+    cachedEditorPptDesignSkillPrompt = readFileSync(EDITOR_CODEX_PROMPT_PATH, 'utf8').trim();
+  } catch {
+    cachedEditorPptDesignSkillPrompt = EDITOR_PPT_DESIGN_SKILL_FALLBACK;
+  }
 
   return cachedEditorPptDesignSkillPrompt;
 }
@@ -285,14 +303,20 @@ function pruneDuplicateLines(markdown, patterns) {
   return filtered.join('\n').trim();
 }
 
-function loadMarkdownSections(markdownPath, headings, fallback) {
+function loadMarkdownSections(markdownPath, headings, fallback, options = {}) {
   try {
     const markdown = readFileSync(markdownPath, 'utf8');
+    const { requiredHeadings = [] } = options;
+    const sectionsByHeading = new Map(headings.map((heading) => [
+      heading,
+      extractMarkdownSection(markdown, heading),
+    ]));
     const sections = headings
-      .map((heading) => extractMarkdownSection(markdown, heading))
+      .map((heading) => sectionsByHeading.get(heading))
       .filter(Boolean);
+    const isMissingRequiredSection = requiredHeadings.some((requiredHeading) => !sectionsByHeading.get(requiredHeading));
 
-    return sections.length > 0
+    return sections.length > 0 && !isMissingRequiredSection
       ? sections.join('\n\n')
       : fallback;
   } catch {
@@ -309,6 +333,9 @@ function getStructuralDesignSkillPrompt() {
     DETAILED_DESIGN_SKILL_PATH,
     DETAILED_DESIGN_SECTION_HEADINGS,
     DETAILED_DESIGN_SKILL_FALLBACK,
+    {
+      requiredHeadings: DETAILED_DESIGN_REQUIRED_SECTION_HEADINGS,
+    },
   );
 
   return cachedStructuralDesignSkillPrompt;
@@ -335,11 +362,12 @@ export function getDetailedDesignSkillPrompt() {
   ].filter(Boolean).join('\n\n');
 }
 
-export function buildCodexEditPrompt({ slideFile, slidePath, userPrompt, selections = [] }) {
+export function buildCodexEditPrompt({ slideFile, slidePath, userPrompt, slideMode = DEFAULT_SLIDE_MODE, selections = [] }) {
   const sanitizedPrompt = typeof userPrompt === 'string' ? userPrompt.trim() : '';
   if (!sanitizedPrompt) {
     throw new Error('Prompt must be a non-empty string.');
   }
+  const { coordinateSpaceLabel, sizeLabel } = getSlideModeConfig(slideMode);
 
   const normalizedSlidePath = typeof slidePath === 'string' && slidePath.trim() !== ''
     ? slidePath.trim()
@@ -361,30 +389,16 @@ export function buildCodexEditPrompt({ slideFile, slidePath, userPrompt, selecti
     ];
   });
 
-  const pptDesignSkillPrompt = getEditorPptDesignSkillPrompt();
-  const skillLines = pptDesignSkillPrompt
+  const editorPrompt = getEditorPptDesignSkillPrompt()
+    .replaceAll('720pt x 405pt', sizeLabel)
+    .replace(
+      'Run `slides-grab validate --slides-dir <path>` after editing.',
+      `Run \`slides-grab validate --slides-dir <path>${slideMode === DEFAULT_SLIDE_MODE ? '' : ` --mode ${slideMode}`}\` after editing.`,
+    );
+  const editorPromptLines = editorPrompt
     ? [
-        'Project skill guidance (follow strictly):',
-        `Source: ${PPT_DESIGN_SKILL_PATH}`,
-        pptDesignSkillPrompt,
-        '',
-      ]
-    : [];
-  const detailedDesignSkillPrompt = getStructuralDesignSkillPrompt();
-  const detailedSkillLines = detailedDesignSkillPrompt
-    ? [
-        'Detailed design/export guardrails (selected from the full design system):',
-        `Primary source: ${DETAILED_DESIGN_SKILL_PATH}`,
-        detailedDesignSkillPrompt,
-        '',
-      ]
-    : [];
-  const slideArtDirectionPrompt = getSlideArtDirectionPrompt();
-  const slideArtDirectionLines = slideArtDirectionPrompt
-    ? [
-        'Slide art direction defaults (packaged guidance for beautiful HTML slides):',
-        `Primary source: ${BEAUTIFUL_SLIDE_DEFAULTS_PATH}`,
-        slideArtDirectionPrompt,
+        'Slide edit rules (follow strictly):',
+        editorPrompt,
         '',
       ]
     : [];
@@ -392,19 +406,17 @@ export function buildCodexEditPrompt({ slideFile, slidePath, userPrompt, selecti
   return [
     `Edit ${normalizedSlidePath} only.`,
     '',
-    ...skillLines,
-    ...detailedSkillLines,
-    ...slideArtDirectionLines,
-    'User edit request:',
+    ...editorPromptLines,
+    'User edit request (this is the primary objective — follow it faithfully):',
     sanitizedPrompt,
     '',
-    'Selected regions on slide (960x540 coordinate space):',
+    `Selected regions on slide (${coordinateSpaceLabel} coordinate space):`,
     ...selectionLines,
     'Rules:',
     '- Edit only the requested slide HTML file among slide-*.html files.',
     '- Do not modify any other slide HTML files unless explicitly requested.',
     '- Keep existing structure/content unless the request requires a change.',
-    '- Keep slide dimensions at 720pt x 405pt.',
+    `- Keep slide dimensions at ${sizeLabel}.`,
     '- Keep text in semantic tags (<p>, <h1>-<h6>, <ul>, <ol>, <li>).',
     '- You may add or update supporting files required for the requested slide, including local images and videos under <slides-dir>/assets/ and tldraw source/export files used to generate those assets.',
     '- When the request needs bespoke imagery, prefer `slides-grab image --prompt "<prompt>" --slides-dir <path>` so Nano Banana Pro saves the asset under <slides-dir>/assets/.',

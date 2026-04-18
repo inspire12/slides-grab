@@ -70,9 +70,9 @@ There are many AI tools that generate slide HTML. Almost none let you **visually
 
 ## CLI Commands
 
-All commands support `--slides-dir <path>` (default: `slides`).
+Workflow commands support `--slides-dir <path>` (default: `slides`).
 
-On a fresh clone, only `--help`, `list-templates`, and `list-themes` work without a deck. `edit`, `build-viewer`, `validate`, `convert`, and `pdf` require an existing slides workspace containing `slide-*.html`.
+On a fresh clone, the discovery commands (`--help`, `list-templates`, `list-styles`, and `preview-styles`) work without a deck. `edit`, `build-viewer`, `validate`, `convert`, and `pdf` require an existing slides workspace containing `slide-*.html`.
 
 ```bash
 slides-grab edit              # Launch visual slide editor
@@ -84,12 +84,26 @@ slides-grab figma             # Export an experimental / unstable Figma Slides i
 slides-grab pdf               # Export PDF in capture mode (default)
 slides-grab pdf --resolution 2160p  # Higher-resolution image-backed PDF export
 slides-grab pdf --mode print  # Export searchable/selectable text PDF
+slides-grab png               # Render one PNG per slide (default 2160p)
+slides-grab png --slide-mode card-news  # Render square 1:1 PNGs for Instagram
 slides-grab image --prompt "..."    # Generate a local slide image with Nano Banana Pro
 slides-grab fetch-video --url <youtube-url> --slides-dir decks/my-deck  # Download a local video asset with yt-dlp
 slides-grab tldraw           # Render a .tldr diagram into a slide-sized local SVG asset
 slides-grab list-templates    # Show available slide templates
-slides-grab list-themes       # Show available color themes
+slides-grab list-styles       # Show 35 bundled design styles (browse, preview, select)
+slides-grab preview-styles                        # Open the 35-style visual gallery in browser
 ```
+
+## Design Style Collections
+
+slides-grab bundles 35 design styles: 30 derived from [corazzon/pptx-design-styles](https://github.com/corazzon/pptx-design-styles) plus 5 slides-grab originals. Agents can also create fully custom designs beyond the bundled collection.
+
+```bash
+slides-grab list-styles                           # Browse the catalog
+slides-grab preview-styles  # Local HTML preview
+```
+
+Tell the agent which style to use (or ask for something custom) — no config files needed.
 
 ## Asset Contract
 
@@ -141,11 +155,25 @@ slides-grab edit       --slides-dir decks/my-deck
 slides-grab validate   --slides-dir decks/my-deck
 slides-grab pdf        --slides-dir decks/my-deck --output decks/my-deck.pdf
 slides-grab pdf        --slides-dir decks/my-deck --mode print --output decks/my-deck-searchable.pdf
+slides-grab png        --slides-dir decks/my-deck --output-dir decks/my-deck/out-png
 slides-grab convert    --slides-dir decks/my-deck --output decks/my-deck.pptx
 slides-grab figma      --slides-dir decks/my-deck --output decks/my-deck-figma.pptx
 ```
 
 > **Warning:** `slides-grab convert` and `slides-grab figma` are currently **experimental / unstable**. Expect best-effort output, layout shifts, and manual cleanup in PowerPoint or Figma.
+
+### Card News (Square 1:1) Workflow
+
+Instagram-style card news uses a 720pt × 720pt frame end-to-end. Pass `--mode card-news` (or `--slide-mode card-news` for `pdf`/`png`) at every stage and prefer `slides-grab png` as the primary export so each card becomes an Instagram-ready PNG.
+
+```bash
+slides-grab edit     --slides-dir decks/my-cards --mode card-news
+slides-grab validate --slides-dir decks/my-cards --mode card-news
+slides-grab png      --slides-dir decks/my-cards --slide-mode card-news --resolution 2160p
+# Optional extras (PPTX / Figma remain experimental / unstable)
+slides-grab pdf      --slides-dir decks/my-cards --slide-mode card-news --output decks/my-cards.pdf
+slides-grab convert  --slides-dir decks/my-cards --mode card-news --output decks/my-cards.pptx
+```
 
 ### Tldraw Diagram Assets
 
@@ -204,7 +232,7 @@ bin/              CLI entry point
 src/editor/       Visual editor (HTML + JS client modules)
 scripts/          Build, validate, convert, editor server
 templates/        Slide HTML templates (cover, content, chart, ...)
-themes/           Color themes (modern-dark, executive, sage, ...)
+src/              Design styles data, style config, path resolution
 skills/           Shared Vercel-installable agent skills + references
 docs/             Installation & usage guides
 ```
